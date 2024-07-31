@@ -1,0 +1,70 @@
+version: 2
+mergeable:
+  # PR title check
+  - when: pull_request.*, pull_request_review.*
+    filter:
+      - do: payload
+        pull_request:
+          draft:
+            boolean:
+              match: false
+    validate:
+      - do: title
+        must_exclude:
+          regex: ^\[WIP\]
+        must_include:
+          regex: ^((DEV|SRE|SREC|AUTH)-[\d]{1,6})\:.+$
+          message: 'Add JIRA issue key'
+    pass:
+      - do: checks
+        status: 'success'
+        payload:
+          title: 'PR title is valid 👍'
+    fail:
+      - do: checks
+        status: 'failure'
+        payload:
+          title: 'Oops! PR title is not valid 💩'
+  # Add "CI trigger" label
+  - when: pull_request.*, pull_request_review.*
+    filter:
+      - do: payload
+        pull_request:
+          draft:
+            boolean:
+              match: false
+    validate:
+      - do: label
+        must_exclude:
+          regex: 'CI trigger'
+    pass:
+      - do: labels
+        add: 'CI trigger'
+  # Check "release" PR and add "release" label
+  - when: pull_request.*, pull_request_review.*
+    filter:
+      - do: payload
+        pull_request:
+          draft:
+            boolean:
+              match: false
+    validate:
+      - do: label
+        must_exclude:
+          regex: '^release\b$'
+      - do: or
+        validate:
+          - do: baseRef
+            must_include:
+              regex: '^main\b$'
+          - do: and
+            validate:
+              - do: headRef
+                must_include:
+                  regex: '^main\b$'
+              - do: baseRef
+                must_include:
+                  regex: '^develop\b$'
+    pass:
+      - do: labels
+        add: ['release']
